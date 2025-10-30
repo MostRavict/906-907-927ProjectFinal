@@ -1,31 +1,31 @@
+# app.py
 import streamlit as st
-import yt_dlp
 import cv2
 from ultralytics import YOLO
 import tempfile
 import os
 
-st.title("🐱 YouTube Cat Detector")
-st.write("ใส่ลิงก์ YouTube แล้วระบบจะตรวจจับ 'แมว' และแสดง Bounding Boxes ให้ดู!")
+st.title("🐱 Cat Detector (Upload MP4)")
+st.write("อัปโหลดไฟล์ MP4 แล้วระบบจะตรวจจับแมวและวาด Bounding Boxes ให้ดู")
 
-# Input YouTube URL
-url = st.text_input("🔗 วางลิงก์ YouTube ที่นี่")
+# Upload video
+uploaded_file = st.file_uploader("อัปโหลดไฟล์ MP4 ของคุณ", type=["mp4"])
 
-if url:
-    with st.spinner("กำลังดาวน์โหลดวิดีโอ..."):
-        temp_video = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-        ydl_opts = {"format": "best[ext=mp4]", "outtmpl": temp_video.name, "quiet": True}
-        yt_dlp.YoutubeDL(ydl_opts).download([url])
+if uploaded_file:
+    # บันทึกไฟล์ชั่วคราว
+    temp_video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+    with open(temp_video_path, "wb") as f:
+        f.write(uploaded_file.read())
 
-    st.success("✅ ดาวน์โหลดวิดีโอเรียบร้อย!")
+    st.success("✅ อัปโหลดเรียบร้อยแล้ว!")
 
     # โหลดโมเดล YOLO
-    model = YOLO("yolov8n.pt")
+    model = YOLO("yolo11n.pt")
 
-    # สร้างวิดีโอผลลัพธ์ชั่วคราว
+    # สร้างไฟล์วิดีโอผลลัพธ์
     output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
 
-    cap = cv2.VideoCapture(temp_video.name)
+    cap = cv2.VideoCapture(temp_video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     width, height = int(cap.get(3)), int(cap.get(4))
     out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
@@ -52,5 +52,6 @@ if url:
     cap.release()
     out.release()
 
-    st.success("✅ ตรวจจับเสร็จสิ้น! นี่คือวิดีโอที่มี Bounding Boxes ของแมว 🐈")
+    st.success("✅ ตรวจจับเสร็จสิ้น! ดูวิดีโอผลลัพธ์ด้านล่าง")
     st.video(output_path)
+

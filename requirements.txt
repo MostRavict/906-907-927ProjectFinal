@@ -1,5 +1,3 @@
-opencv-python
-ultralytics
 streamlit
-numpy
-yt-dlp
+ultralytics
+opencv-python-headless
