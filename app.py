@@ -1,9 +1,9 @@
-# app.py
 import streamlit as st
-import cv2
 from ultralytics import YOLO
 import tempfile
+import cv2
 import os
+import subprocess
 
 st.title("🐱 Cat Detector (Upload MP4)")
 st.write("อัปโหลดไฟล์ MP4 แล้วระบบจะตรวจจับแมวและวาด Bounding Boxes ให้ดู")
@@ -22,23 +22,17 @@ if uploaded_file:
     # โหลดโมเดล YOLO
     model = YOLO("yolo11n.pt")
 
-    # สร้างไฟล์วิดีโอผลลัพธ์
-    output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-
+    # อ่าน video
     cap = cv2.VideoCapture(temp_video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     width, height = int(cap.get(3)), int(cap.get(4))
-    out = cv2.VideoWriter(
-    output_path,
-    cv2.VideoWriter_fourcc(*'mp4v'),  # ใช้ mp4v ที่ OpenCV รองรับ
-    fps,
-    (width, height)
-    )
 
-    st.write("🐾 เริ่มตรวจจับแมวในวิดีโอ...")
-
+    # สร้างโฟลเดอร์เก็บ frames
+    frames_dir = tempfile.mkdtemp()
     frame_index = 0
     frame_interval = int(fps)  # ตรวจทุก 1 วินาที
+
+    st.write("🐾 เริ่มตรวจจับแมวในวิดีโอ...")
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -47,16 +41,27 @@ if uploaded_file:
 
         if frame_index % frame_interval == 0:
             results = model.predict(source=frame, conf=0.3, verbose=False)
-            annotated_frame = results[0].plot()  # วาด Bounding Boxes
+            annotated_frame = results[0].plot()
         else:
             annotated_frame = frame
 
-        out.write(annotated_frame)
+        # บันทึก frame เป็น PNG
+        frame_path = os.path.join(frames_dir, f"frame{frame_index:05d}.png")
+        cv2.imwrite(frame_path, annotated_frame)
         frame_index += 1
 
     cap.release()
-    out.release()
+
+    # สร้าง video ผ่าน ffmpeg
+    output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-framerate", str(int(fps)),
+        "-i", os.path.join(frames_dir, "frame%05d.png"),
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        output_path
+    ])
 
     st.success("✅ ตรวจจับเสร็จสิ้น! ดูวิดีโอผลลัพธ์ด้านล่าง")
     st.video(output_path)
-
