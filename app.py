@@ -6,7 +6,7 @@ import os
 import subprocess
 
 st.title("🐱 Cat Detector (Upload MP4)")
-st.write("อัปโหลดไฟล์ MP4 แล้วระบบจะตรวจจับแมวและวาด Bounding Boxes ให้ดู")
+st.write("อัปโหลดไฟล์ MP4 ของคุณแล้วระบบจะตรวจจับแมวและวาด Bounding Boxes ให้ดู")
 
 # Upload video
 uploaded_file = st.file_uploader("อัปโหลดไฟล์ MP4 ของคุณ", type=["mp4"])
@@ -40,7 +40,16 @@ if uploaded_file:
 
         # ตรวจทุก frame
         results = model.predict(source=frame, conf=0.3, verbose=False)
-        annotated_frame = results[0].plot()
+
+        # กรองเฉพาะแมว
+        boxes = results[0].boxes
+        names = results[0].names
+        cat_indices = [i for i, name in enumerate(names) if name == "cat"]
+
+        if cat_indices:
+            annotated_frame = results[0].plot(boxes=boxes[cat_indices])
+        else:
+            annotated_frame = frame
 
         # บันทึก frame เป็น PNG
         frame_path = os.path.join(frames_dir, f"frame{frame_index:05d}.png")
