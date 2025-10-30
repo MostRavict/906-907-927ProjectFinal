@@ -6,7 +6,7 @@ import os
 import subprocess
 
 st.title("🐱 Cat Detector (Upload MP4)")
-st.write("อัปโหลดไฟล์ MP4 ของคุณแล้วระบบจะตรวจจับแมวและวาด Bounding Boxes ให้ดู")
+st.write("อัปโหลดไฟล์ MP4 ของคุณแล้วระบบจะตรวจจับแมวและวาด Bounding Boxes พร้อมจำนวนแมวบนวิดีโอ")
 
 # Upload video
 uploaded_file = st.file_uploader("อัปโหลดไฟล์ MP4 ของคุณ", type=["mp4"])
@@ -30,6 +30,7 @@ if uploaded_file:
     # สร้างโฟลเดอร์เก็บ frames
     frames_dir = tempfile.mkdtemp()
     frame_index = 0
+    frame_counts = []
 
     st.write("🐾 เริ่มตรวจจับแมวในวิดีโอ...")
 
@@ -42,16 +43,22 @@ if uploaded_file:
         results = model.predict(source=frame, conf=0.3, verbose=False)
 
         boxes = results[0].boxes
-        class_indices = boxes.cls  # tensor ของ class index
-        names = [model.names[int(cls)] for cls in class_indices]  # map index → class name
+        class_indices = boxes.cls
+        names = [model.names[int(cls)] for cls in class_indices]
 
         # filter เฉพาะ cat
         cat_indices = [i for i, name in enumerate(names) if name == "cat"]
+        cat_count = len(cat_indices)
+        frame_counts.append(cat_count)
 
         if cat_indices:
-          annotated_frame = results[0].plot(boxes=boxes[cat_indices])
+            annotated_frame = results[0].plot(boxes=boxes[cat_indices])
         else:
-          annotated_frame = frame
+            annotated_frame = frame
+
+        # แปะข้อความจำนวนแมวบน frame
+        text = f"แมว {cat_count} ตัว"
+        cv2.putText(annotated_frame, text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
         # บันทึก frame เป็น PNG
         frame_path = os.path.join(frames_dir, f"frame{frame_index:05d}.png")
