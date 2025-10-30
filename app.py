@@ -28,7 +28,12 @@ if uploaded_file:
     cap = cv2.VideoCapture(temp_video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     width, height = int(cap.get(3)), int(cap.get(4))
-    out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'X264'), fps, (width, height))
+    out = cv2.VideoWriter(
+    output_path,
+    cv2.VideoWriter_fourcc(*'mp4v'),  # ใช้ mp4v ที่ OpenCV รองรับ
+    fps,
+    (width, height)
+    )
 
     st.write("🐾 เริ่มตรวจจับแมวในวิดีโอ...")
 
