@@ -1,80 +1,59 @@
 import streamlit as st
+import cv2
 from ultralytics import YOLO
 import tempfile
-import cv2
-import os
-import subprocess
+import time
+import numpy as np
 
-st.title("🐱 Cat Detector (Upload MP4)")
-st.write("Upload an MP4 file and the app will detect cats, draw bounding boxes, and display the count on the video.")
+st.title("🐱 Real-time Cat Monitor")
+expected_cats = st.number_input("จำนวนแมวที่คาดหวัง", min_value=1, step=1)
 
-# Upload video
-uploaded_file = st.file_uploader("Upload your MP4 file", type=["mp4"])
+# โหลด YOLO
+model = YOLO("yolo11n.pt")
 
-if uploaded_file:
-    # Save temporary video file
-    temp_video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-    with open(temp_video_path, "wb") as f:
-        f.write(uploaded_file.read())
+# ใช้ webcam
+stframe = st.empty()
+cap = cv2.VideoCapture(0)  # 0 = webcam
 
-    st.success("✅ Upload completed!")
+st.write("เริ่มตรวจจับแมว... กด Stop เพื่อหยุด")
 
-    # Load YOLO model
-    model = YOLO("yolo11n.pt")
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        st.warning("ไม่สามารถเข้ากล้องได้")
+        break
 
-    # Read video
-    cap = cv2.VideoCapture(temp_video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    width, height = int(cap.get(3)), int(cap.get(4))
+    results = model.predict(source=frame, conf=0.3, verbose=False)
+    boxes = results[0].boxes
+    class_indices = boxes.cls
+    names = [model.names[int(cls)] for cls in class_indices]
 
-    # Create folder to save frames
-    frames_dir = tempfile.mkdtemp()
-    frame_index = 0
+    # filter เฉพาะ cat
+    cat_indices = [i for i, name in enumerate(names) if name == "cat"]
+    cat_count = len(cat_indices)
 
-    st.write("🐾 Detecting cats in the video...")
+    # วาดเฉพาะแมว
+    if cat_indices:
+        cat_boxes = boxes[cat_indices]
+        annotated_frame = results[0].plot(boxes=cat_boxes)
+    else:
+        annotated_frame = frame
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
+    # แสดงข้อความจำนวนแมว
+    text = f"Cats: {cat_count}"
+    if cat_count < expected_cats:
+        color = (0, 0, 255)  # แดง
+        status_text = "🐾 Missing Cats!"
+    else:
+        color = (0, 255, 0)  # เขียว
+        status_text = "🐾 All Cats Present!"
 
-        # Predict
-        results = model.predict(source=frame, conf=0.3, verbose=False)
+    cv2.putText(annotated_frame, text, (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+    cv2.putText(annotated_frame, status_text, (10, 70),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
-        boxes = results[0].boxes
-        class_indices = boxes.cls
-        names = [model.names[int(cls)] for cls in class_indices]
+    stframe.image(cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB), channels="RGB")
 
-        # Filter only cats
-        cat_indices = [i for i, name in enumerate(names) if name == "cat"]
-        cat_count = len(cat_indices)
-
-        if cat_indices:
-            annotated_frame = results[0].plot(boxes=boxes[cat_indices])  # Only cats
-        else:
-            annotated_frame = frame
-
-        # Put text on frame
-        text = f"Cats: {cat_count}"
-        cv2.putText(annotated_frame, text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-
-        # Save frame
-        frame_path = os.path.join(frames_dir, f"frame{frame_index:05d}.png")
-        cv2.imwrite(frame_path, annotated_frame)
-        frame_index += 1
-
-    cap.release()
-
-    # Create output video via ffmpeg
-    output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-    subprocess.run([
-        "ffmpeg", "-y",
-        "-framerate", str(int(fps)),
-        "-i", os.path.join(frames_dir, "frame%05d.png"),
-        "-c:v", "libx264",
-        "-pix_fmt", "yuv420p",
-        output_path
-    ])
-
-    st.success("✅ Detection completed! Watch the result below")
-    st.video(output_path)
+    # เพิ่ม delay เล็กน้อย
+    time.sleep(0.1)
