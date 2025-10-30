@@ -30,7 +30,6 @@ if uploaded_file:
     # สร้างโฟลเดอร์เก็บ frames
     frames_dir = tempfile.mkdtemp()
     frame_index = 0
-    frame_interval = int(fps)  # ตรวจทุก 1 วินาที
 
     st.write("🐾 เริ่มตรวจจับแมวในวิดีโอ...")
 
@@ -39,11 +38,9 @@ if uploaded_file:
         if not ret:
             break
 
-        if frame_index % frame_interval == 0:
-            results = model.predict(source=frame, conf=0.3, verbose=False)
-            annotated_frame = results[0].plot()
-        else:
-            annotated_frame = frame
+        # ตรวจทุก frame
+        results = model.predict(source=frame, conf=0.3, verbose=False)
+        annotated_frame = results[0].plot()
 
         # บันทึก frame เป็น PNG
         frame_path = os.path.join(frames_dir, f"frame{frame_index:05d}.png")
