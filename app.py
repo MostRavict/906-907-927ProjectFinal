@@ -41,15 +41,17 @@ if uploaded_file:
         # ตรวจทุก frame
         results = model.predict(source=frame, conf=0.3, verbose=False)
 
-        # กรองเฉพาะแมว
         boxes = results[0].boxes
-        names = results[0].names
+        class_indices = boxes.cls  # tensor ของ class index
+        names = [model.names[int(cls)] for cls in class_indices]  # map index → class name
+
+        # filter เฉพาะ cat
         cat_indices = [i for i, name in enumerate(names) if name == "cat"]
 
         if cat_indices:
-            annotated_frame = results[0].plot(boxes=boxes[cat_indices])
+          annotated_frame = results[0].plot(boxes=boxes[cat_indices])
         else:
-            annotated_frame = frame
+          annotated_frame = frame
 
         # บันทึก frame เป็น PNG
         frame_path = os.path.join(frames_dir, f"frame{frame_index:05d}.png")
