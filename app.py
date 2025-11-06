@@ -10,7 +10,7 @@ model = YOLO("yolo11n.pt")
 run = st.checkbox("▶️ เริ่มกล้อง")
 FRAME_WINDOW = st.image([])
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 print("Camera opened:", cap.isOpened())
 while run:
     ret, frame = cap.read()
