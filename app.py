@@ -9,7 +9,7 @@ st.title("🐱 Real-time Cat Monitor")
 expected_cats = st.number_input("จำนวนแมวที่คาดหวัง", min_value=1, step=1)
 
 # โหลด YOLO model
-model = YOLO("yolo11n.pt")
+model = YOLO("best.pt")
 
 # ใช้กล้องผ่าน browser
 st.write("📸 ถ่ายภาพแมวเพื่อทำการตรวจจับ")
