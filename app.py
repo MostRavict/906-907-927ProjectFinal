@@ -20,7 +20,7 @@ if uploaded_file:
     st.success("✅ Upload completed!")
 
     # Load YOLO model
-    model = YOLO("yolo11n.pt")
+    model = YOLO("best.pt")
 
     # Read video
     cap = cv2.VideoCapture(temp_video_path)
